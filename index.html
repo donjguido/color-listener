@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Listener</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Color Listener</h1>
+    <p class="subtitle">Upload an image. Click or drag to hear its colors.</p>
+  </header>
+
+  <main>
+    <section class="canvas-area">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="imageCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+        <div class="upload-prompt" id="uploadPrompt">
+          <div class="upload-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p>Drop an image here or click to upload</p>
+          <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+      </div>
+
+      <div class="canvas-controls">
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="click" id="clickMode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 3l14 8-7 1-3 7z"/>
+            </svg>
+            Click
+          </button>
+          <button class="mode-btn" data-mode="region" id="regionMode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+            </svg>
+            Region
+          </button>
+          <button class="mode-btn" data-mode="scan" id="scanMode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <polyline points="14 6 20 12 14 18"/>
+            </svg>
+            Scan
+          </button>
+        </div>
+        <button class="btn-secondary" id="clearImage" disabled>Clear Image</button>
+      </div>
+    </section>
+
+    <aside class="controls-panel">
+      <section class="panel-section">
+        <h2>Color Info</h2>
+        <div class="color-display">
+          <div class="color-swatch" id="colorSwatch"></div>
+          <div class="color-values">
+            <div class="color-row">
+              <span class="label">RGB</span>
+              <span id="rgbValue" class="value">—</span>
+            </div>
+            <div class="color-row">
+              <span class="label">HSL</span>
+              <span id="hslValue" class="value">—</span>
+            </div>
+            <div class="color-row">
+              <span class="label">Hex</span>
+              <span id="hexValue" class="value">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>Sound Info</h2>
+        <div class="sound-display">
+          <div class="sound-row">
+            <span class="label">Frequency</span>
+            <span id="freqValue" class="value">— Hz</span>
+          </div>
+          <div class="sound-row">
+            <span class="label">Note</span>
+            <span id="noteValue" class="value">—</span>
+          </div>
+          <div class="sound-row">
+            <span class="label">Volume</span>
+            <span id="volValue" class="value">—</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>Frequency Mapping</h2>
+        <div class="mapping-controls">
+          <div class="range-group">
+            <label>
+              Min Frequency
+              <span class="range-value" id="minFreqDisplay">110 Hz</span>
+            </label>
+            <input type="range" id="minFreq" min="20" max="2000" value="110" step="1">
+          </div>
+          <div class="range-group">
+            <label>
+              Max Frequency
+              <span class="range-value" id="maxFreqDisplay">1760 Hz</span>
+            </label>
+            <input type="range" id="maxFreq" min="100" max="8000" value="1760" step="1">
+          </div>
+          <div class="range-group">
+            <label>
+              Volume
+              <span class="range-value" id="volumeDisplay">50%</span>
+            </label>
+            <input type="range" id="volume" min="0" max="100" value="50" step="1">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>Waveform</h2>
+        <div class="waveform-buttons">
+          <button class="wave-btn active" data-wave="sine">Sine</button>
+          <button class="wave-btn" data-wave="triangle">Triangle</button>
+          <button class="wave-btn" data-wave="sawtooth">Sawtooth</button>
+          <button class="wave-btn" data-wave="square">Square</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>Mapping Mode</h2>
+        <div class="waveform-buttons">
+          <button class="map-btn active" data-map="hue">Hue → Pitch</button>
+          <button class="map-btn" data-map="brightness">Brightness → Pitch</button>
+          <button class="map-btn" data-map="full">Full HSL</button>
+        </div>
+        <p class="hint" id="mappingHint">Hue controls pitch. Saturation controls richness. Brightness controls volume.</p>
+      </section>
+
+      <section class="panel-section">
+        <h2>Scan Speed</h2>
+        <div class="range-group">
+          <label>
+            Speed
+            <span class="range-value" id="scanSpeedDisplay">Medium</span>
+          </label>
+          <input type="range" id="scanSpeed" min="1" max="10" value="5" step="1">
+        </div>
+      </section>
+
+      <section class="panel-section visualizer-section">
+        <h2>Waveform Visualizer</h2>
+        <canvas id="visualizer" width="320" height="80"></canvas>
+      </section>
+    </aside>
+  </main>
+
+  <script src="audio.js"></script>
+  <script src="canvas.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
