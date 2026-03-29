@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "live-server --port=3000 --no-browser",
+    "dev": "npm install && live-server --port=3000 --no-browser",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
