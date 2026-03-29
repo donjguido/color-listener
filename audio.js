@@ -27,6 +27,7 @@ class ColorAudio {
       // ── Strings ──
       violin: {
         category: 'strings',
+        frequencyRange: { min: 196, max: 3136 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.5, wave: 'sine' },
@@ -40,6 +41,7 @@ class ColorAudio {
       },
       viola: {
         category: 'strings',
+        frequencyRange: { min: 131, max: 1047 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.6, wave: 'sine' },
@@ -52,6 +54,7 @@ class ColorAudio {
       },
       cello: {
         category: 'strings',
+        frequencyRange: { min: 65, max: 988 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.55, wave: 'sine' },
@@ -64,6 +67,7 @@ class ColorAudio {
       },
       harp: {
         category: 'strings',
+        frequencyRange: { min: 33, max: 3322 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 2, amp: 0.4, wave: 'sine' },
@@ -75,6 +79,7 @@ class ColorAudio {
       // ── Woodwinds ──
       flute: {
         category: 'woodwinds',
+        frequencyRange: { min: 262, max: 2093 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 2, amp: 0.12, wave: 'sine' },
@@ -86,6 +91,7 @@ class ColorAudio {
       },
       oboe: {
         category: 'woodwinds',
+        frequencyRange: { min: 233, max: 1568 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.7, wave: 'sine' },
@@ -100,6 +106,7 @@ class ColorAudio {
       },
       clarinet: {
         category: 'woodwinds',
+        frequencyRange: { min: 147, max: 2093 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 3, amp: 0.6, wave: 'sine' },  // odd harmonics dominate
@@ -112,6 +119,7 @@ class ColorAudio {
       },
       bassoon: {
         category: 'woodwinds',
+        frequencyRange: { min: 58, max: 622 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.65, wave: 'sine' },
@@ -126,6 +134,7 @@ class ColorAudio {
       // ── Brass ──
       trumpet: {
         category: 'brass',
+        frequencyRange: { min: 165, max: 1047 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.8, wave: 'sine' },
@@ -140,6 +149,7 @@ class ColorAudio {
       },
       frenchHorn: {
         category: 'brass',
+        frequencyRange: { min: 62, max: 698 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 2, amp: 0.7, wave: 'sine' },
@@ -153,6 +163,7 @@ class ColorAudio {
       },
       trombone: {
         category: 'brass',
+        frequencyRange: { min: 58, max: 587 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.7, wave: 'sine' },
@@ -165,6 +176,7 @@ class ColorAudio {
       },
       tuba: {
         category: 'brass',
+        frequencyRange: { min: 29, max: 349 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sawtooth' },
           { ratio: 2, amp: 0.6, wave: 'sine' },
@@ -177,6 +189,7 @@ class ColorAudio {
       // ── Percussion ──
       timpani: {
         category: 'percussion',
+        frequencyRange: { min: 65, max: 349 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 1.5, amp: 0.5, wave: 'sine' },
@@ -188,6 +201,7 @@ class ColorAudio {
       },
       glockenspiel: {
         category: 'percussion',
+        frequencyRange: { min: 1397, max: 4186 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 2.76, amp: 0.4, wave: 'sine' },
@@ -198,6 +212,7 @@ class ColorAudio {
       },
       xylophone: {
         category: 'percussion',
+        frequencyRange: { min: 698, max: 4186 },
         harmonics: [
           { ratio: 1, amp: 1.0, wave: 'sine' },
           { ratio: 3, amp: 0.3, wave: 'sine' },

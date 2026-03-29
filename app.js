@@ -84,6 +84,23 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 });
 
 // ─── Instrument switching ──────────────────────────────
+const DEFAULT_FREQ_RANGE = { min: 110, max: 1760 };
+
+function applyFrequencyRange(min, max) {
+  minFreqSlider.min = 20;
+  minFreqSlider.max = max - 1;
+  minFreqSlider.value = min;
+  maxFreqSlider.min = min + 1;
+  maxFreqSlider.max = Math.max(max, 8000);
+  maxFreqSlider.value = max;
+
+  audio.minFreq = min;
+  audio.maxFreq = max;
+
+  minFreqDisplay.textContent = `${min} Hz`;
+  maxFreqDisplay.textContent = `${max} Hz`;
+}
+
 document.querySelectorAll('.inst-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
@@ -92,8 +109,13 @@ document.querySelectorAll('.inst-btn').forEach(btn => {
     if (btn.dataset.inst === 'basic') {
       audio.instrument = 'basic';
       audio.waveform = btn.dataset.wave;
+      applyFrequencyRange(DEFAULT_FREQ_RANGE.min, DEFAULT_FREQ_RANGE.max);
     } else {
       audio.instrument = btn.dataset.inst;
+      const inst = audio.instruments[btn.dataset.inst];
+      if (inst?.frequencyRange) {
+        applyFrequencyRange(inst.frequencyRange.min, inst.frequencyRange.max);
+      }
     }
 
     // Restart sound if currently playing so the change is heard immediately
