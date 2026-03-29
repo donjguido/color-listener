@@ -328,32 +328,56 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* Waveform & Mapping Buttons */
+/* Instrument & Mapping Buttons */
+.instrument-group {
+  margin-bottom: 10px;
+}
+
+.instrument-group:last-child {
+  margin-bottom: 0;
+}
+
+.instrument-category-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+  opacity: 0.7;
+}
+
+.instrument-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
 .waveform-buttons {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
 }
 
-.wave-btn, .map-btn {
+.inst-btn, .map-btn {
   flex: 1;
-  padding: 8px 6px;
+  padding: 7px 5px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
+  min-width: 0;
 }
 
-.wave-btn:hover, .map-btn:hover {
+.inst-btn:hover, .map-btn:hover {
   border-color: var(--accent);
   color: var(--text);
 }
 
-.wave-btn.active, .map-btn.active {
+.inst-btn.active, .map-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
