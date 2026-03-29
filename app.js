@@ -83,12 +83,23 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
   });
 });
 
-// ─── Waveform switching ────────────────────────────────
-document.querySelectorAll('.wave-btn').forEach(btn => {
+// ─── Instrument switching ──────────────────────────────
+document.querySelectorAll('.inst-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    audio.waveform = btn.dataset.wave;
+
+    if (btn.dataset.inst === 'basic') {
+      audio.instrument = 'basic';
+      audio.waveform = btn.dataset.wave;
+    } else {
+      audio.instrument = btn.dataset.inst;
+    }
+
+    // Restart sound if currently playing so the change is heard immediately
+    if (audio.isPlaying) {
+      audio.stop();
+    }
   });
 });
 

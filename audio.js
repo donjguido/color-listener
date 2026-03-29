@@ -11,11 +11,202 @@ class ColorAudio {
     this.volume = 0.5;
     this.waveform = 'sine';
     this.mappingMode = 'hue';
+    this.instrument = 'basic'; // 'basic' uses waveform, otherwise uses instrument definition
+
+    // Active oscillator nodes for multi-oscillator instruments
+    this.activeNodes = [];
 
     // For smooth transitions
     this.targetFreq = 0;
     this.targetGain = 0;
     this.rampTime = 0.05;
+
+    // Orchestral instrument definitions
+    // Each defines harmonics (partial ratios + amplitudes), envelope, and optional filter
+    this.instruments = {
+      // ── Strings ──
+      violin: {
+        category: 'strings',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.5, wave: 'sine' },
+          { ratio: 3, amp: 0.35, wave: 'sine' },
+          { ratio: 4, amp: 0.2, wave: 'sine' },
+          { ratio: 5, amp: 0.1, wave: 'sine' },
+        ],
+        envelope: { attack: 0.08, decay: 0.1, sustain: 0.7, release: 0.12 },
+        filter: { type: 'lowpass', frequency: 4000, Q: 1.5 },
+        vibrato: { rate: 5.5, depth: 4 },
+      },
+      viola: {
+        category: 'strings',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.6, wave: 'sine' },
+          { ratio: 3, amp: 0.4, wave: 'sine' },
+          { ratio: 4, amp: 0.25, wave: 'sine' },
+        ],
+        envelope: { attack: 0.1, decay: 0.12, sustain: 0.65, release: 0.15 },
+        filter: { type: 'lowpass', frequency: 3200, Q: 1.2 },
+        vibrato: { rate: 5, depth: 3.5 },
+      },
+      cello: {
+        category: 'strings',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.55, wave: 'sine' },
+          { ratio: 3, amp: 0.3, wave: 'sine' },
+          { ratio: 4, amp: 0.15, wave: 'sine' },
+        ],
+        envelope: { attack: 0.12, decay: 0.15, sustain: 0.6, release: 0.2 },
+        filter: { type: 'lowpass', frequency: 2500, Q: 1.0 },
+        vibrato: { rate: 4.5, depth: 3 },
+      },
+      harp: {
+        category: 'strings',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 2, amp: 0.4, wave: 'sine' },
+          { ratio: 3, amp: 0.15, wave: 'sine' },
+        ],
+        envelope: { attack: 0.005, decay: 0.8, sustain: 0.0, release: 0.5 },
+        filter: { type: 'lowpass', frequency: 5000, Q: 0.5 },
+      },
+      // ── Woodwinds ──
+      flute: {
+        category: 'woodwinds',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 2, amp: 0.12, wave: 'sine' },
+          { ratio: 3, amp: 0.06, wave: 'sine' },
+        ],
+        envelope: { attack: 0.06, decay: 0.08, sustain: 0.8, release: 0.1 },
+        filter: { type: 'lowpass', frequency: 6000, Q: 0.7 },
+        vibrato: { rate: 5, depth: 2 },
+      },
+      oboe: {
+        category: 'woodwinds',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.7, wave: 'sine' },
+          { ratio: 3, amp: 0.5, wave: 'sine' },
+          { ratio: 4, amp: 0.35, wave: 'sine' },
+          { ratio: 5, amp: 0.2, wave: 'sine' },
+          { ratio: 6, amp: 0.1, wave: 'sine' },
+        ],
+        envelope: { attack: 0.04, decay: 0.1, sustain: 0.75, release: 0.08 },
+        filter: { type: 'bandpass', frequency: 1800, Q: 2.0 },
+        vibrato: { rate: 4.5, depth: 2.5 },
+      },
+      clarinet: {
+        category: 'woodwinds',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 3, amp: 0.6, wave: 'sine' },  // odd harmonics dominate
+          { ratio: 5, amp: 0.35, wave: 'sine' },
+          { ratio: 7, amp: 0.15, wave: 'sine' },
+        ],
+        envelope: { attack: 0.05, decay: 0.1, sustain: 0.75, release: 0.1 },
+        filter: { type: 'lowpass', frequency: 3500, Q: 1.2 },
+        vibrato: { rate: 4, depth: 1.5 },
+      },
+      bassoon: {
+        category: 'woodwinds',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.65, wave: 'sine' },
+          { ratio: 3, amp: 0.45, wave: 'sine' },
+          { ratio: 4, amp: 0.3, wave: 'sine' },
+          { ratio: 5, amp: 0.2, wave: 'sine' },
+        ],
+        envelope: { attack: 0.06, decay: 0.12, sustain: 0.7, release: 0.12 },
+        filter: { type: 'lowpass', frequency: 2000, Q: 1.5 },
+        vibrato: { rate: 4, depth: 2 },
+      },
+      // ── Brass ──
+      trumpet: {
+        category: 'brass',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.8, wave: 'sine' },
+          { ratio: 3, amp: 0.6, wave: 'sine' },
+          { ratio: 4, amp: 0.4, wave: 'sine' },
+          { ratio: 5, amp: 0.25, wave: 'sine' },
+          { ratio: 6, amp: 0.15, wave: 'sine' },
+        ],
+        envelope: { attack: 0.03, decay: 0.08, sustain: 0.8, release: 0.06 },
+        filter: { type: 'lowpass', frequency: 5000, Q: 2.0 },
+        vibrato: { rate: 5, depth: 3 },
+      },
+      frenchHorn: {
+        category: 'brass',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 2, amp: 0.7, wave: 'sine' },
+          { ratio: 3, amp: 0.5, wave: 'sine' },
+          { ratio: 4, amp: 0.35, wave: 'sine' },
+          { ratio: 5, amp: 0.2, wave: 'sine' },
+        ],
+        envelope: { attack: 0.06, decay: 0.1, sustain: 0.7, release: 0.15 },
+        filter: { type: 'lowpass', frequency: 2800, Q: 1.5 },
+        vibrato: { rate: 4, depth: 2.5 },
+      },
+      trombone: {
+        category: 'brass',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.7, wave: 'sine' },
+          { ratio: 3, amp: 0.5, wave: 'sine' },
+          { ratio: 4, amp: 0.3, wave: 'sine' },
+        ],
+        envelope: { attack: 0.05, decay: 0.1, sustain: 0.75, release: 0.1 },
+        filter: { type: 'lowpass', frequency: 2200, Q: 1.8 },
+        vibrato: { rate: 4.5, depth: 3 },
+      },
+      tuba: {
+        category: 'brass',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sawtooth' },
+          { ratio: 2, amp: 0.6, wave: 'sine' },
+          { ratio: 3, amp: 0.35, wave: 'sine' },
+          { ratio: 4, amp: 0.2, wave: 'sine' },
+        ],
+        envelope: { attack: 0.08, decay: 0.12, sustain: 0.65, release: 0.15 },
+        filter: { type: 'lowpass', frequency: 1500, Q: 1.2 },
+      },
+      // ── Percussion ──
+      timpani: {
+        category: 'percussion',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 1.5, amp: 0.5, wave: 'sine' },
+          { ratio: 2, amp: 0.3, wave: 'sine' },
+          { ratio: 2.5, amp: 0.15, wave: 'sine' },
+        ],
+        envelope: { attack: 0.005, decay: 0.6, sustain: 0.0, release: 0.4 },
+        filter: { type: 'lowpass', frequency: 1200, Q: 0.8 },
+      },
+      glockenspiel: {
+        category: 'percussion',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 2.76, amp: 0.4, wave: 'sine' },
+          { ratio: 5.4, amp: 0.2, wave: 'sine' },
+        ],
+        envelope: { attack: 0.002, decay: 1.2, sustain: 0.0, release: 0.8 },
+        filter: { type: 'highpass', frequency: 800, Q: 0.5 },
+      },
+      xylophone: {
+        category: 'percussion',
+        harmonics: [
+          { ratio: 1, amp: 1.0, wave: 'sine' },
+          { ratio: 3, amp: 0.3, wave: 'sine' },
+          { ratio: 6, amp: 0.1, wave: 'sine' },
+        ],
+        envelope: { attack: 0.002, decay: 0.5, sustain: 0.0, release: 0.3 },
+        filter: { type: 'lowpass', frequency: 8000, Q: 0.5 },
+      },
+    };
   }
 
   init() {
@@ -119,8 +310,18 @@ class ColorAudio {
     const { frequency, gain } = this.colorToSound(r, g, b);
     const now = this.ctx.currentTime;
 
+    if (this.instrument === 'basic') {
+      this._playBasic(frequency, gain, now);
+    } else {
+      this._playInstrument(frequency, gain, now);
+    }
+  }
+
+  /**
+   * Basic oscillator mode (original behavior)
+   */
+  _playBasic(frequency, gain, now) {
     if (!this.isPlaying) {
-      // Create new oscillator
       this.oscillator = this.ctx.createOscillator();
       this.gainNode = this.ctx.createGain();
 
@@ -134,10 +335,91 @@ class ColorAudio {
       this.oscillator.start(now);
       this.isPlaying = true;
     } else {
-      // Smooth transition to new frequency/gain
       this.oscillator.frequency.linearRampToValueAtTime(frequency, now + this.rampTime);
       this.gainNode.gain.linearRampToValueAtTime(gain, now + this.rampTime);
       this.oscillator.type = this.waveform;
+    }
+  }
+
+  /**
+   * Orchestral instrument mode using additive synthesis
+   */
+  _playInstrument(frequency, gain, now) {
+    const inst = this.instruments[this.instrument];
+    if (!inst) return this._playBasic(frequency, gain, now);
+
+    if (!this.isPlaying) {
+      // Create master gain node
+      this.gainNode = this.ctx.createGain();
+      this.gainNode.gain.setValueAtTime(0, now);
+
+      // Create filter if defined
+      let destination = this.gainNode;
+      if (inst.filter) {
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = inst.filter.type;
+        filter.frequency.setValueAtTime(inst.filter.frequency, now);
+        filter.Q.setValueAtTime(inst.filter.Q, now);
+        this.gainNode.connect(filter);
+        filter.connect(this.analyser);
+        this._activeFilter = filter;
+      } else {
+        this.gainNode.connect(this.analyser);
+      }
+
+      // Create oscillators for each harmonic partial
+      this.activeNodes = [];
+      const totalAmp = inst.harmonics.reduce((sum, h) => sum + h.amp, 0);
+
+      for (const harmonic of inst.harmonics) {
+        const osc = this.ctx.createOscillator();
+        const partialGain = this.ctx.createGain();
+
+        osc.type = harmonic.wave;
+        osc.frequency.setValueAtTime(frequency * harmonic.ratio, now);
+        partialGain.gain.setValueAtTime(harmonic.amp / totalAmp, now);
+
+        osc.connect(partialGain);
+        partialGain.connect(this.gainNode);
+        osc.start(now);
+
+        this.activeNodes.push({ osc, gain: partialGain, ratio: harmonic.ratio });
+      }
+
+      // Add vibrato LFO if defined
+      if (inst.vibrato) {
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(inst.vibrato.rate, now);
+        lfoGain.gain.setValueAtTime(inst.vibrato.depth, now);
+        lfo.connect(lfoGain);
+        // Connect LFO to all oscillator frequencies
+        for (const node of this.activeNodes) {
+          lfoGain.connect(node.osc.frequency);
+        }
+        lfo.start(now);
+        this._lfo = lfo;
+        this._lfoGain = lfoGain;
+      }
+
+      // Apply ADSR envelope (attack phase)
+      const env = inst.envelope;
+      this.gainNode.gain.setValueAtTime(0, now);
+      this.gainNode.gain.linearRampToValueAtTime(gain, now + env.attack);
+      this.gainNode.gain.linearRampToValueAtTime(gain * env.sustain, now + env.attack + env.decay);
+
+      // Store the first oscillator as this.oscillator for compatibility
+      this.oscillator = this.activeNodes[0]?.osc || null;
+      this.isPlaying = true;
+    } else {
+      // Smooth transition: update all partial frequencies and master gain
+      for (const node of this.activeNodes) {
+        node.osc.frequency.linearRampToValueAtTime(
+          frequency * node.ratio, now + this.rampTime
+        );
+      }
+      this.gainNode.gain.linearRampToValueAtTime(gain * (inst.envelope.sustain || 0.7), now + this.rampTime);
     }
   }
 
@@ -172,18 +454,46 @@ class ColorAudio {
     if (!this.isPlaying || !this.gainNode) return;
 
     const now = this.ctx.currentTime;
-    this.gainNode.gain.linearRampToValueAtTime(0, now + 0.05);
+    const releaseTime = (this.instrument !== 'basic' && this.instruments[this.instrument])
+      ? this.instruments[this.instrument].envelope.release
+      : 0.05;
 
+    this.gainNode.gain.linearRampToValueAtTime(0, now + releaseTime);
+
+    const nodesToClean = [...this.activeNodes];
     const osc = this.oscillator;
     const gn = this.gainNode;
+    const filter = this._activeFilter;
+    const lfo = this._lfo;
+    const lfoGain = this._lfoGain;
+
     setTimeout(() => {
-      try { osc.stop(); } catch (e) {}
-      try { osc.disconnect(); } catch (e) {}
+      // Stop all partial oscillators
+      for (const node of nodesToClean) {
+        try { node.osc.stop(); } catch (e) {}
+        try { node.osc.disconnect(); } catch (e) {}
+        try { node.gain.disconnect(); } catch (e) {}
+      }
+      // Stop basic oscillator if used
+      if (osc && nodesToClean.length === 0) {
+        try { osc.stop(); } catch (e) {}
+        try { osc.disconnect(); } catch (e) {}
+      }
       try { gn.disconnect(); } catch (e) {}
-    }, 80);
+      if (filter) try { filter.disconnect(); } catch (e) {}
+      if (lfo) {
+        try { lfo.stop(); } catch (e) {}
+        try { lfo.disconnect(); } catch (e) {}
+      }
+      if (lfoGain) try { lfoGain.disconnect(); } catch (e) {}
+    }, (releaseTime + 0.05) * 1000);
 
     this.oscillator = null;
     this.gainNode = null;
+    this.activeNodes = [];
+    this._activeFilter = null;
+    this._lfo = null;
+    this._lfoGain = null;
     this.isPlaying = false;
   }
 
