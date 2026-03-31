@@ -358,6 +358,35 @@ input[type="range"]::-moz-range-thumb {
   flex-wrap: wrap;
 }
 
+.chord-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.snap-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.snap-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.snap-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
 .inst-btn, .map-btn {
   flex: 1;
   padding: 7px 5px;

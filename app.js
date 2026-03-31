@@ -84,6 +84,23 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 });
 
 // ─── Instrument switching ──────────────────────────────
+const DEFAULT_FREQ_RANGE = { min: 110, max: 1760 };
+
+function applyFrequencyRange(min, max) {
+  minFreqSlider.min = 20;
+  minFreqSlider.max = max - 1;
+  minFreqSlider.value = min;
+  maxFreqSlider.min = min + 1;
+  maxFreqSlider.max = Math.max(max, 8000);
+  maxFreqSlider.value = max;
+
+  audio.minFreq = min;
+  audio.maxFreq = max;
+
+  minFreqDisplay.textContent = `${min} Hz`;
+  maxFreqDisplay.textContent = `${max} Hz`;
+}
+
 document.querySelectorAll('.inst-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
@@ -92,8 +109,13 @@ document.querySelectorAll('.inst-btn').forEach(btn => {
     if (btn.dataset.inst === 'basic') {
       audio.instrument = 'basic';
       audio.waveform = btn.dataset.wave;
+      applyFrequencyRange(DEFAULT_FREQ_RANGE.min, DEFAULT_FREQ_RANGE.max);
     } else {
       audio.instrument = btn.dataset.inst;
+      const inst = audio.instruments[btn.dataset.inst];
+      if (inst?.frequencyRange) {
+        applyFrequencyRange(inst.frequencyRange.min, inst.frequencyRange.max);
+      }
     }
 
     // Restart sound if currently playing so the change is heard immediately
@@ -117,6 +139,13 @@ document.querySelectorAll('.map-btn').forEach(btn => {
     audio.mappingMode = btn.dataset.map;
     mappingHint.textContent = mappingHints[btn.dataset.map];
   });
+});
+
+// ─── Snap to Scale toggle ─────────────────────────────
+const snapToggle = $('snapToggle');
+snapToggle.addEventListener('click', () => {
+  audio.snapToScale = !audio.snapToScale;
+  snapToggle.classList.toggle('active', audio.snapToScale);
 });
 
 // ─── Frequency range controls ──────────────────────────
@@ -162,27 +191,17 @@ canvas.onColorPick = (r, g, b, x, y) => {
 };
 
 canvas.onRegionPick = (colors) => {
-  const result = audio.playColors(colors);
-  if (result) {
-    // Compute average color for display
-    let tr = 0, tg = 0, tb = 0;
-    for (const [r, g, b] of colors) { tr += r; tg += g; tb += b; }
-    const ar = Math.round(tr / colors.length);
-    const ag = Math.round(tg / colors.length);
-    const ab = Math.round(tb / colors.length);
-    updateDisplays(ar, ag, ab);
+  const results = audio.playColors(colors);
+  if (results && results.length > 0) {
+    // Display the dominant (first) voice's info, show chord note count
+    updateChordDisplays(results);
   }
 };
 
 canvas.onScanColumn = (colors) => {
-  const result = audio.playColors(colors);
-  if (result) {
-    let tr = 0, tg = 0, tb = 0;
-    for (const [r, g, b] of colors) { tr += r; tg += g; tb += b; }
-    const ar = Math.round(tr / colors.length);
-    const ag = Math.round(tg / colors.length);
-    const ab = Math.round(tb / colors.length);
-    updateDisplays(ar, ag, ab);
+  const results = audio.playColors(colors);
+  if (results && results.length > 0) {
+    updateChordDisplays(results);
   }
 };
 
@@ -208,6 +227,26 @@ function updateDisplays(r, g, b) {
   freqValue.textContent = `${sound.frequency.toFixed(1)} Hz`;
   noteValue.textContent = note;
   volValue.textContent = `${Math.round(sound.gain * 100)}%`;
+}
+
+function updateChordDisplays(results) {
+  // Show the first voice's color info
+  const primary = results[0];
+  const hsl = primary.hsl;
+
+  colorSwatch.classList.add('active', 'playing');
+
+  hslValue.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+  rgbValue.textContent = `${results.length} voices`;
+  hexValue.textContent = '—';
+
+  // Show all chord notes
+  const notes = results.map(r => audio.frequencyToNote(r.frequency).replace(/[+-]\d+c$/, ''));
+  freqValue.textContent = results.length === 1
+    ? `${primary.frequency.toFixed(1)} Hz`
+    : `${results.length} tones`;
+  noteValue.textContent = notes.join(' · ');
+  volValue.textContent = `${Math.round(primary.gain * 100)}%`;
 }
 
 function resetDisplays() {
