@@ -16,6 +16,13 @@ class ColorAudio {
     // Active oscillator nodes for multi-oscillator instruments
     this.activeNodes = [];
 
+    // Chord (polyphonic) state
+    this.chordVoices = []; // array of { oscillators, gainNode, filter, lfo, lfoGain }
+    this.chordMaster = null;
+    this.maxVoices = 6;
+    this.snapToScale = false;
+    this.isChordPlaying = false;
+
     // For smooth transitions
     this.targetFreq = 0;
     this.targetGain = 0;
@@ -317,6 +324,14 @@ class ColorAudio {
   }
 
   /**
+   * Snap a frequency to the nearest chromatic semitone (equal temperament)
+   */
+  snapFrequency(freq) {
+    const semitones = Math.round(12 * Math.log2(freq / 440));
+    return 440 * Math.pow(2, semitones / 12);
+  }
+
+  /**
    * Start or update the sound for a given color
    */
   playColor(r, g, b) {
@@ -439,33 +454,198 @@ class ColorAudio {
   }
 
   /**
-   * Play a chord from multiple colors (for region selection)
+   * Cluster colors into N groups by hue bin, returning averaged RGB per bin
+   */
+  _clusterColors(colors, numBins) {
+    const bins = Array.from({ length: numBins }, () => ({ r: 0, g: 0, b: 0, count: 0 }));
+    const binSize = 360 / numBins;
+
+    for (const [r, g, b] of colors) {
+      const hsl = this.rgbToHsl(r, g, b);
+      const binIdx = Math.min(Math.floor(hsl.h / binSize), numBins - 1);
+      bins[binIdx].r += r;
+      bins[binIdx].g += g;
+      bins[binIdx].b += b;
+      bins[binIdx].count++;
+    }
+
+    return bins
+      .filter(b => b.count > 0)
+      .map(b => [
+        Math.round(b.r / b.count),
+        Math.round(b.g / b.count),
+        Math.round(b.b / b.count)
+      ]);
+  }
+
+  /**
+   * Play a chord from multiple colors (for region selection).
+   * Colors are clustered into distinct voices, each played simultaneously.
+   * Returns an array of { frequency, gain, hsl } for display.
    */
   playColors(colors) {
     this.init();
+    this.stopChord();
     this.stop();
 
-    if (colors.length === 0) return;
+    if (colors.length === 0) return [];
 
-    // Average the colors to get one sound
-    let totalR = 0, totalG = 0, totalB = 0;
-    for (const [r, g, b] of colors) {
-      totalR += r;
-      totalG += g;
-      totalB += b;
+    // Cluster into up to maxVoices distinct color groups
+    const clustered = this._clusterColors(colors, this.maxVoices);
+    if (clustered.length === 0) return [];
+
+    const now = this.ctx.currentTime;
+
+    // Create a master gain for the chord, scaled by number of voices
+    this.chordMaster = this.ctx.createGain();
+    this.chordMaster.gain.setValueAtTime(1 / Math.sqrt(clustered.length), now);
+    this.chordMaster.connect(this.analyser);
+
+    const results = [];
+
+    for (const [r, g, b] of clustered) {
+      const sound = this.colorToSound(r, g, b);
+      let freq = sound.frequency;
+      if (this.snapToScale) {
+        freq = this.snapFrequency(freq);
+        freq = Math.max(this.minFreq, Math.min(this.maxFreq, freq));
+      }
+
+      results.push({ frequency: freq, gain: sound.gain, hsl: sound.hsl });
+
+      // Create a voice for this cluster
+      this._createChordVoice(freq, sound.gain, now);
     }
-    const avgR = totalR / colors.length;
-    const avgG = totalG / colors.length;
-    const avgB = totalB / colors.length;
 
-    this.playColor(avgR, avgG, avgB);
-    return this.colorToSound(avgR, avgG, avgB);
+    this.isChordPlaying = true;
+    return results;
+  }
+
+  /**
+   * Create a single chord voice (basic or instrument) connected to chordMaster
+   */
+  _createChordVoice(frequency, gain, now) {
+    const inst = (this.instrument !== 'basic') ? this.instruments[this.instrument] : null;
+
+    if (!inst) {
+      // Basic waveform voice
+      const osc = this.ctx.createOscillator();
+      const gn = this.ctx.createGain();
+      osc.type = this.waveform;
+      osc.frequency.setValueAtTime(frequency, now);
+      gn.gain.setValueAtTime(0, now);
+      gn.gain.linearRampToValueAtTime(gain, now + 0.02);
+      osc.connect(gn);
+      gn.connect(this.chordMaster);
+      osc.start(now);
+      this.chordVoices.push({ oscillators: [osc], gainNode: gn });
+    } else {
+      // Orchestral instrument voice
+      const voiceGain = this.ctx.createGain();
+      voiceGain.gain.setValueAtTime(0, now);
+
+      let output = voiceGain;
+      let filter = null;
+      if (inst.filter) {
+        filter = this.ctx.createBiquadFilter();
+        filter.type = inst.filter.type;
+        filter.frequency.setValueAtTime(inst.filter.frequency, now);
+        filter.Q.setValueAtTime(inst.filter.Q, now);
+        voiceGain.connect(filter);
+        filter.connect(this.chordMaster);
+        output = voiceGain;
+      } else {
+        voiceGain.connect(this.chordMaster);
+      }
+
+      const oscillators = [];
+      const totalAmp = inst.harmonics.reduce((sum, h) => sum + h.amp, 0);
+
+      for (const harmonic of inst.harmonics) {
+        const osc = this.ctx.createOscillator();
+        const partialGain = this.ctx.createGain();
+        osc.type = harmonic.wave;
+        osc.frequency.setValueAtTime(frequency * harmonic.ratio, now);
+        partialGain.gain.setValueAtTime(harmonic.amp / totalAmp, now);
+        osc.connect(partialGain);
+        partialGain.connect(voiceGain);
+        osc.start(now);
+        oscillators.push(osc);
+      }
+
+      // Vibrato LFO
+      let lfo = null, lfoGain = null;
+      if (inst.vibrato) {
+        lfo = this.ctx.createOscillator();
+        lfoGain = this.ctx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(inst.vibrato.rate, now);
+        lfoGain.gain.setValueAtTime(inst.vibrato.depth, now);
+        lfo.connect(lfoGain);
+        for (const osc of oscillators) {
+          lfoGain.connect(osc.frequency);
+        }
+        lfo.start(now);
+      }
+
+      // ADSR envelope
+      const env = inst.envelope;
+      voiceGain.gain.setValueAtTime(0, now);
+      voiceGain.gain.linearRampToValueAtTime(gain, now + env.attack);
+      voiceGain.gain.linearRampToValueAtTime(gain * env.sustain, now + env.attack + env.decay);
+
+      this.chordVoices.push({ oscillators, gainNode: voiceGain, filter, lfo, lfoGain });
+    }
+  }
+
+  /**
+   * Stop all chord voices
+   */
+  stopChord() {
+    if (!this.isChordPlaying && this.chordVoices.length === 0) return;
+
+    const now = this.ctx?.currentTime || 0;
+    const releaseTime = (this.instrument !== 'basic' && this.instruments[this.instrument])
+      ? this.instruments[this.instrument].envelope.release
+      : 0.05;
+
+    const voicesToClean = [...this.chordVoices];
+    const master = this.chordMaster;
+
+    // Fade out each voice
+    for (const voice of voicesToClean) {
+      if (voice.gainNode) {
+        voice.gainNode.gain.linearRampToValueAtTime(0, now + releaseTime);
+      }
+    }
+
+    setTimeout(() => {
+      for (const voice of voicesToClean) {
+        for (const osc of voice.oscillators) {
+          try { osc.stop(); } catch (e) {}
+          try { osc.disconnect(); } catch (e) {}
+        }
+        if (voice.gainNode) try { voice.gainNode.disconnect(); } catch (e) {}
+        if (voice.filter) try { voice.filter.disconnect(); } catch (e) {}
+        if (voice.lfo) {
+          try { voice.lfo.stop(); } catch (e) {}
+          try { voice.lfo.disconnect(); } catch (e) {}
+        }
+        if (voice.lfoGain) try { voice.lfoGain.disconnect(); } catch (e) {}
+      }
+      if (master) try { master.disconnect(); } catch (e) {}
+    }, (releaseTime + 0.05) * 1000);
+
+    this.chordVoices = [];
+    this.chordMaster = null;
+    this.isChordPlaying = false;
   }
 
   /**
    * Stop all sound with a quick fade-out
    */
   stop() {
+    this.stopChord();
     if (!this.isPlaying || !this.gainNode) return;
 
     const now = this.ctx.currentTime;

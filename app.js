@@ -141,6 +141,13 @@ document.querySelectorAll('.map-btn').forEach(btn => {
   });
 });
 
+// ─── Snap to Scale toggle ─────────────────────────────
+const snapToggle = $('snapToggle');
+snapToggle.addEventListener('click', () => {
+  audio.snapToScale = !audio.snapToScale;
+  snapToggle.classList.toggle('active', audio.snapToScale);
+});
+
 // ─── Frequency range controls ──────────────────────────
 minFreqSlider.addEventListener('input', () => {
   const val = parseInt(minFreqSlider.value);
@@ -184,27 +191,17 @@ canvas.onColorPick = (r, g, b, x, y) => {
 };
 
 canvas.onRegionPick = (colors) => {
-  const result = audio.playColors(colors);
-  if (result) {
-    // Compute average color for display
-    let tr = 0, tg = 0, tb = 0;
-    for (const [r, g, b] of colors) { tr += r; tg += g; tb += b; }
-    const ar = Math.round(tr / colors.length);
-    const ag = Math.round(tg / colors.length);
-    const ab = Math.round(tb / colors.length);
-    updateDisplays(ar, ag, ab);
+  const results = audio.playColors(colors);
+  if (results && results.length > 0) {
+    // Display the dominant (first) voice's info, show chord note count
+    updateChordDisplays(results);
   }
 };
 
 canvas.onScanColumn = (colors) => {
-  const result = audio.playColors(colors);
-  if (result) {
-    let tr = 0, tg = 0, tb = 0;
-    for (const [r, g, b] of colors) { tr += r; tg += g; tb += b; }
-    const ar = Math.round(tr / colors.length);
-    const ag = Math.round(tg / colors.length);
-    const ab = Math.round(tb / colors.length);
-    updateDisplays(ar, ag, ab);
+  const results = audio.playColors(colors);
+  if (results && results.length > 0) {
+    updateChordDisplays(results);
   }
 };
 
@@ -230,6 +227,26 @@ function updateDisplays(r, g, b) {
   freqValue.textContent = `${sound.frequency.toFixed(1)} Hz`;
   noteValue.textContent = note;
   volValue.textContent = `${Math.round(sound.gain * 100)}%`;
+}
+
+function updateChordDisplays(results) {
+  // Show the first voice's color info
+  const primary = results[0];
+  const hsl = primary.hsl;
+
+  colorSwatch.classList.add('active', 'playing');
+
+  hslValue.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+  rgbValue.textContent = `${results.length} voices`;
+  hexValue.textContent = '—';
+
+  // Show all chord notes
+  const notes = results.map(r => audio.frequencyToNote(r.frequency).replace(/[+-]\d+c$/, ''));
+  freqValue.textContent = results.length === 1
+    ? `${primary.frequency.toFixed(1)} Hz`
+    : `${results.length} tones`;
+  noteValue.textContent = notes.join(' · ');
+  volValue.textContent = `${Math.round(primary.gain * 100)}%`;
 }
 
 function resetDisplays() {
