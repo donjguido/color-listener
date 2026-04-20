@@ -125,6 +125,118 @@ document.querySelectorAll('.inst-btn').forEach(btn => {
   });
 });
 
+// ─── Color → Instrument mapping ────────────────────────
+const FAMILY_DEFS = [
+  { id: 'red', label: 'Red', swatch: '#e74c3c' },
+  { id: 'orange', label: 'Orange', swatch: '#e67e22' },
+  { id: 'yellow', label: 'Yellow', swatch: '#f1c40f' },
+  { id: 'green', label: 'Green', swatch: '#2ecc71' },
+  { id: 'cyan', label: 'Cyan', swatch: '#1abc9c' },
+  { id: 'blue', label: 'Blue', swatch: '#3498db' },
+  { id: 'purple', label: 'Purple', swatch: '#9b59b6' },
+  { id: 'magenta', label: 'Magenta', swatch: '#e91e8c' },
+  { id: 'neutral', label: 'Neutral', swatch: 'linear-gradient(90deg,#111,#888,#eee)' },
+];
+
+const INSTRUMENT_OPTIONS = [
+  { group: 'Basic Waveforms', items: [
+    ['sine', 'Sine'], ['triangle', 'Triangle'], ['sawtooth', 'Sawtooth'], ['square', 'Square'],
+  ]},
+  { group: 'Strings', items: [
+    ['violin', 'Violin'], ['viola', 'Viola'], ['cello', 'Cello'], ['harp', 'Harp'],
+  ]},
+  { group: 'Woodwinds', items: [
+    ['flute', 'Flute'], ['oboe', 'Oboe'], ['clarinet', 'Clarinet'], ['bassoon', 'Bassoon'],
+  ]},
+  { group: 'Brass', items: [
+    ['trumpet', 'Trumpet'], ['frenchHorn', 'French Horn'], ['trombone', 'Trombone'], ['tuba', 'Tuba'],
+  ]},
+  { group: 'Percussion', items: [
+    ['timpani', 'Timpani'], ['glockenspiel', 'Glockenspiel'], ['xylophone', 'Xylophone'],
+  ]},
+];
+
+const colorMappingEnable = $('colorMappingEnable');
+const colorMappingRows = $('colorMappingRows');
+const regenerateInstrumentsBtn = $('regenerateInstruments');
+
+const ALL_INSTRUMENTS = INSTRUMENT_OPTIONS.flatMap(g => g.items.map(([v]) => v));
+const manuallySetFamilies = new Set();
+
+function randomInstrument() {
+  return ALL_INSTRUMENTS[Math.floor(Math.random() * ALL_INSTRUMENTS.length)];
+}
+
+function randomizeUnsetFamilies() {
+  for (const fam of FAMILY_DEFS) {
+    if (!manuallySetFamilies.has(fam.id)) {
+      audio.familyInstruments[fam.id] = randomInstrument();
+    }
+  }
+}
+
+function buildInstrumentSelect(familyId, value) {
+  const sel = document.createElement('select');
+  sel.className = 'color-family-select';
+  sel.dataset.family = familyId;
+  for (const group of INSTRUMENT_OPTIONS) {
+    const og = document.createElement('optgroup');
+    og.label = group.group;
+    for (const [val, label] of group.items) {
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = label;
+      if (val === value) opt.selected = true;
+      og.appendChild(opt);
+    }
+    sel.appendChild(og);
+  }
+  sel.addEventListener('change', () => {
+    audio.familyInstruments[familyId] = sel.value;
+    manuallySetFamilies.add(familyId);
+    if (audio.isPlaying) audio.stop();
+  });
+  return sel;
+}
+
+function renderColorMappingRows() {
+  colorMappingRows.innerHTML = '';
+  for (const fam of FAMILY_DEFS) {
+    const row = document.createElement('div');
+    row.className = 'color-family-row';
+    const swatch = document.createElement('span');
+    swatch.className = 'color-family-swatch';
+    swatch.style.background = fam.swatch;
+    const name = document.createElement('span');
+    name.className = 'color-family-name';
+    name.textContent = fam.label;
+    const sel = buildInstrumentSelect(fam.id, audio.familyInstruments[fam.id]);
+    row.appendChild(swatch);
+    row.appendChild(name);
+    row.appendChild(sel);
+    colorMappingRows.appendChild(row);
+  }
+}
+
+colorMappingEnable.addEventListener('change', () => {
+  audio.colorMappingEnabled = colorMappingEnable.checked;
+  colorMappingRows.classList.toggle('disabled', !colorMappingEnable.checked);
+  if (colorMappingEnable.checked) {
+    randomizeUnsetFamilies();
+    renderColorMappingRows();
+  }
+  if (audio.isPlaying) audio.stop();
+});
+
+regenerateInstrumentsBtn.addEventListener('click', () => {
+  randomizeUnsetFamilies();
+  renderColorMappingRows();
+  if (audio.isPlaying) audio.stop();
+});
+
+renderColorMappingRows();
+colorMappingRows.classList.add('disabled');
+
 // ─── Mapping mode ──────────────────────────────────────
 const mappingHints = {
   hue: 'Hue controls pitch. Saturation controls richness. Brightness controls volume.',

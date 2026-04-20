@@ -13,6 +13,14 @@ class ColorAudio {
     this.mappingMode = 'hue';
     this.instrument = 'basic'; // 'basic' uses waveform, otherwise uses instrument definition
 
+    // Color-family → instrument mapping
+    this.colorMappingEnabled = false;
+    this.familyInstruments = {
+      red: 'sine', orange: 'sine', yellow: 'sine', green: 'sine',
+      cyan: 'sine', blue: 'sine', purple: 'sine', magenta: 'sine',
+      neutral: 'sine'
+    };
+
     // Active oscillator nodes for multi-oscillator instruments
     this.activeNodes = [];
 
@@ -268,6 +276,42 @@ class ColorAudio {
   }
 
   /**
+   * Classify an RGB color into a hue family bucket.
+   * Returns one of: red, orange, yellow, green, cyan, blue, purple, magenta, neutral.
+   */
+  classifyColorFamily(r, g, b) {
+    const hsl = this.rgbToHsl(r, g, b);
+    if (hsl.s < 15 || hsl.l < 10 || hsl.l > 90) return 'neutral';
+    const h = hsl.h;
+    if (h >= 345 || h < 15) return 'red';
+    if (h < 45) return 'orange';
+    if (h < 75) return 'yellow';
+    if (h < 165) return 'green';
+    if (h < 195) return 'cyan';
+    if (h < 255) return 'blue';
+    if (h < 285) return 'purple';
+    return 'magenta';
+  }
+
+  /**
+   * Resolve effective instrument for a color, honoring color-family mapping when enabled.
+   * Returns { instrument, waveform }.
+   */
+  _effectiveInstrumentFor(r, g, b) {
+    if (!this.colorMappingEnabled) {
+      return { instrument: this.instrument, waveform: this.waveform };
+    }
+    const family = this.classifyColorFamily(r, g, b);
+    const assigned = this.familyInstruments[family];
+    const basicWaves = ['sine', 'triangle', 'sawtooth', 'square'];
+    if (!assigned) return { instrument: this.instrument, waveform: this.waveform };
+    if (basicWaves.includes(assigned)) {
+      return { instrument: 'basic', waveform: assigned };
+    }
+    return { instrument: assigned, waveform: this.waveform };
+  }
+
+  /**
    * Map a color (r, g, b) to audio parameters based on the current mapping mode.
    * Returns { frequency, gain, detune }
    */
@@ -337,25 +381,34 @@ class ColorAudio {
   playColor(r, g, b) {
     this.init();
 
+    const effective = this._effectiveInstrumentFor(r, g, b);
+
+    // If switching instrument mid-play, stop so we start fresh with the new voice.
+    if (this.isPlaying && this._activeInstrument && this._activeInstrument !== effective.instrument) {
+      this.stop();
+    }
+    this._activeInstrument = effective.instrument;
+
     const { frequency, gain } = this.colorToSound(r, g, b);
     const now = this.ctx.currentTime;
 
-    if (this.instrument === 'basic') {
-      this._playBasic(frequency, gain, now);
+    if (effective.instrument === 'basic') {
+      this._playBasic(frequency, gain, now, effective.waveform);
     } else {
-      this._playInstrument(frequency, gain, now);
+      this._playInstrument(frequency, gain, now, effective.instrument);
     }
   }
 
   /**
    * Basic oscillator mode (original behavior)
    */
-  _playBasic(frequency, gain, now) {
+  _playBasic(frequency, gain, now, waveform) {
+    const wave = waveform || this.waveform;
     if (!this.isPlaying) {
       this.oscillator = this.ctx.createOscillator();
       this.gainNode = this.ctx.createGain();
 
-      this.oscillator.type = this.waveform;
+      this.oscillator.type = wave;
       this.oscillator.frequency.setValueAtTime(frequency, now);
       this.gainNode.gain.setValueAtTime(0, now);
       this.gainNode.gain.linearRampToValueAtTime(gain, now + 0.02);
@@ -367,15 +420,16 @@ class ColorAudio {
     } else {
       this.oscillator.frequency.linearRampToValueAtTime(frequency, now + this.rampTime);
       this.gainNode.gain.linearRampToValueAtTime(gain, now + this.rampTime);
-      this.oscillator.type = this.waveform;
+      this.oscillator.type = wave;
     }
   }
 
   /**
    * Orchestral instrument mode using additive synthesis
    */
-  _playInstrument(frequency, gain, now) {
-    const inst = this.instruments[this.instrument];
+  _playInstrument(frequency, gain, now, instrumentName) {
+    const name = instrumentName || this.instrument;
+    const inst = this.instruments[name];
     if (!inst) return this._playBasic(frequency, gain, now);
 
     if (!this.isPlaying) {
@@ -513,8 +567,8 @@ class ColorAudio {
 
       results.push({ frequency: freq, gain: sound.gain, hsl: sound.hsl });
 
-      // Create a voice for this cluster
-      this._createChordVoice(freq, sound.gain, now);
+      // Create a voice for this cluster (per-color instrument if mapping enabled)
+      this._createChordVoice(freq, sound.gain, now, r, g, b);
     }
 
     this.isChordPlaying = true;
@@ -524,14 +578,17 @@ class ColorAudio {
   /**
    * Create a single chord voice (basic or instrument) connected to chordMaster
    */
-  _createChordVoice(frequency, gain, now) {
-    const inst = (this.instrument !== 'basic') ? this.instruments[this.instrument] : null;
+  _createChordVoice(frequency, gain, now, r, g, b) {
+    const effective = (r !== undefined)
+      ? this._effectiveInstrumentFor(r, g, b)
+      : { instrument: this.instrument, waveform: this.waveform };
+    const inst = (effective.instrument !== 'basic') ? this.instruments[effective.instrument] : null;
 
     if (!inst) {
       // Basic waveform voice
       const osc = this.ctx.createOscillator();
       const gn = this.ctx.createGain();
-      osc.type = this.waveform;
+      osc.type = effective.waveform;
       osc.frequency.setValueAtTime(frequency, now);
       gn.gain.setValueAtTime(0, now);
       gn.gain.linearRampToValueAtTime(gain, now + 0.02);
@@ -605,9 +662,14 @@ class ColorAudio {
     if (!this.isChordPlaying && this.chordVoices.length === 0) return;
 
     const now = this.ctx?.currentTime || 0;
-    const releaseTime = (this.instrument !== 'basic' && this.instruments[this.instrument])
-      ? this.instruments[this.instrument].envelope.release
-      : 0.05;
+    // If color-family mapping is on, voices may span multiple instruments; use a
+    // generous release so none clicks. Otherwise use the single instrument's release.
+    let releaseTime = 0.05;
+    if (this.colorMappingEnabled) {
+      releaseTime = 0.8;
+    } else if (this.instrument !== 'basic' && this.instruments[this.instrument]) {
+      releaseTime = this.instruments[this.instrument].envelope.release;
+    }
 
     const voicesToClean = [...this.chordVoices];
     const master = this.chordMaster;
@@ -649,8 +711,9 @@ class ColorAudio {
     if (!this.isPlaying || !this.gainNode) return;
 
     const now = this.ctx.currentTime;
-    const releaseTime = (this.instrument !== 'basic' && this.instruments[this.instrument])
-      ? this.instruments[this.instrument].envelope.release
+    const activeName = this._activeInstrument || this.instrument;
+    const releaseTime = (activeName !== 'basic' && this.instruments[activeName])
+      ? this.instruments[activeName].envelope.release
       : 0.05;
 
     this.gainNode.gain.linearRampToValueAtTime(0, now + releaseTime);
@@ -689,6 +752,7 @@ class ColorAudio {
     this._activeFilter = null;
     this._lfo = null;
     this._lfoGain = null;
+    this._activeInstrument = null;
     this.isPlaying = false;
   }
 

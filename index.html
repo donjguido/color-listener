@@ -13,6 +13,17 @@
   </header>
 
   <main>
+    <div class="panel-toolbar" id="panelToolbarFloating">
+      <button class="panel-menu-btn" id="panelMenuBtn" aria-haspopup="true" aria-expanded="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        Panels
+      </button>
+      <div class="panel-menu" id="panelMenu" hidden></div>
+    </div>
     <section class="canvas-area">
       <div class="canvas-wrapper" id="canvasWrapper">
         <canvas id="imageCanvas"></canvas>
@@ -54,10 +65,24 @@
         </div>
         <button class="btn-secondary" id="clearImage" disabled>Clear Image</button>
       </div>
+
+      <div class="panel-dock panel-dock-bottom" id="panelDockBottom" data-zone="bottom" aria-label="Bottom panel dock"></div>
     </section>
 
-    <aside class="controls-panel">
-      <section class="panel-section">
+    <aside class="controls-panel panel-dock" id="controlsPanel" data-zone="right">
+      <section class="panel-section" data-panel-id="theme">
+        <h2>Theme</h2>
+        <div class="theme-buttons" id="themeButtons">
+          <button class="theme-btn active" data-theme="midnight">Midnight</button>
+          <button class="theme-btn" data-theme="sunset">Sunset</button>
+          <button class="theme-btn" data-theme="forest">Forest</button>
+          <button class="theme-btn" data-theme="synthwave">Synthwave</button>
+          <button class="theme-btn" data-theme="paper">Paper</button>
+          <button class="theme-btn" data-theme="mono">Mono</button>
+        </div>
+      </section>
+
+      <section class="panel-section" data-panel-id="color-info">
         <h2>Color Info</h2>
         <div class="color-display">
           <div class="color-swatch" id="colorSwatch"></div>
@@ -78,7 +103,7 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="sound-info">
         <h2>Sound Info</h2>
         <div class="sound-display">
           <div class="sound-row">
@@ -96,7 +121,7 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="freq-mapping">
         <h2>Frequency Mapping</h2>
         <div class="mapping-controls">
           <div class="range-group">
@@ -123,7 +148,7 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="instrument">
         <h2>Instrument</h2>
         <div class="instrument-group">
           <div class="instrument-category-label">Basic Waveforms</div>
@@ -171,7 +196,20 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="color-instrument">
+        <h2>Color &rarr; Instrument</h2>
+        <div class="color-mapping">
+          <label class="color-mapping-toggle">
+            <input type="checkbox" id="colorMappingEnable">
+            <span>Map by color family</span>
+          </label>
+          <div class="color-mapping-rows" id="colorMappingRows"></div>
+          <button class="btn-secondary" id="regenerateInstruments" type="button">Regenerate</button>
+          <p class="hint">Each hue range plays its chosen instrument. Neutral covers grays, blacks, and whites.</p>
+        </div>
+      </section>
+
+      <section class="panel-section" data-panel-id="chord-options">
         <h2>Chord Options</h2>
         <div class="chord-options">
           <button class="snap-btn" id="snapToggle">Snap to Scale</button>
@@ -179,7 +217,7 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="mapping-mode">
         <h2>Mapping Mode</h2>
         <div class="waveform-buttons">
           <button class="map-btn active" data-map="hue">Hue → Pitch</button>
@@ -189,7 +227,7 @@
         <p class="hint" id="mappingHint">Hue controls pitch. Saturation controls richness. Brightness controls volume.</p>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" data-panel-id="scan-speed">
         <h2>Scan Speed</h2>
         <div class="range-group">
           <label>
@@ -200,7 +238,7 @@
         </div>
       </section>
 
-      <section class="panel-section visualizer-section">
+      <section class="panel-section visualizer-section" data-panel-id="visualizer">
         <h2>Waveform Visualizer</h2>
         <canvas id="visualizer" width="320" height="80"></canvas>
       </section>
@@ -210,5 +248,7 @@
   <script src="audio.js"></script>
   <script src="canvas.js"></script>
   <script src="app.js"></script>
+  <script src="panels.js"></script>
+  <script src="themes.js"></script>
 </body>
 </html>
